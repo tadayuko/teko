@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
+<title>てこのつり合い</title>
+<style>
+:root{font-family:-apple-system,BlinkMacSystemFont,"Hiragino Kaku Gothic ProN","Yu Gothic",sans-serif;color:#172033;background:#f4f7fb}
+*{box-sizing:border-box}body{margin:0;background:#f4f7fb}main{max-width:980px;margin:auto;padding:18px}
+h1{font-size:clamp(1.35rem,4vw,2rem);margin:0 0 6px}p{line-height:1.6}.intro{color:#526176;margin-top:0}
+.panel{background:white;border:1px solid #dbe3ed;border-radius:16px;padding:16px;margin:14px 0;box-shadow:0 3px 12px #162b4610}
+.controls{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
+.control{background:#f8fafc;border-radius:12px;padding:10px}.control label{font-weight:700;font-size:.95rem;display:block;margin-bottom:8px}.control output{font-weight:700}
+input[type=range]{width:100%;height:36px;accent-color:#2878bb;cursor:pointer;touch-action:pan-y;-webkit-appearance:none;appearance:none;background:transparent;margin:2px 0}input[type=range]::-webkit-slider-runnable-track{height:8px;background:#d5e0ec;border-radius:999px}input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:24px;height:24px;margin-top:-8px;border-radius:50%;background:#2878bb;border:2px solid #fff;box-shadow:0 0 0 1px #2878bb}input[type=range]::-moz-range-track{height:8px;background:#d5e0ec;border-radius:999px}input[type=range]::-moz-range-thumb{width:22px;height:22px;border-radius:50%;background:#2878bb;border:2px solid #fff}button{min-height:44px;touch-action:manipulation}
+svg{display:block;width:100%;height:auto;touch-action:manipulation}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:.92rem}.dot{display:inline-block;width:12px;height:12px;border-radius:3px;margin-right:5px}
+.gridpair{display:grid;grid-template-columns:1fr 1fr;gap:14px}.side{border-radius:12px;padding:12px}.side h2{font-size:1.1rem;margin:0 0 6px}.left{background:#eaf4ff}.right{background:#fff0ee}
+.result{font-size:1.12rem;font-weight:750;text-align:center;padding:14px;border-radius:12px;background:#f1f5f9}
+button{font:inherit;font-weight:700;border:1px solid #b8c7d9;border-radius:10px;padding:10px 14px;background:white;color:#172033;cursor:pointer}button:active{transform:translateY(1px)}.buttons{display:flex;gap:10px;flex-wrap:wrap}
+.note{font-size:.88rem;color:#59677a}
+@media(max-width:900px){main{padding:12px}.controls{grid-template-columns:repeat(2,minmax(0,1fr))}.gridpair{grid-template-columns:repeat(2,minmax(0,1fr));gap:6px}.side{padding:6px}.side h2{font-size:.88rem}.panel{padding:12px}}@media(max-width:420px){.controls{grid-template-columns:1fr}.gridpair{grid-template-columns:1fr}.side{padding:10px}.side h2{font-size:1rem}}
+</style>
+</head>
+<body><main>
+<h1>てこのつり合い</h1>
+<section class="panel all-in-one">
+
+<svg id="lever" viewBox="-10 0 740 430" role="img" aria-label="中央に支点があり、左右に目盛りのあるてこの棒"></svg>
+<h2>条件を変えてみよう</h2>
+<div class="controls">
+<div class="control"><label for="ld">左の距離：<output id="ldv">3</output></label><input id="ld" type="range" min="1" max="8" value="3"></div>
+<div class="control"><label for="lw">左のおもり：<output id="lwv">4</output></label><input id="lw" type="range" min="1" max="8" value="4"></div>
+<div class="control"><label for="rd">右の距離：<output id="rdv">4</output></label><input id="rd" type="range" min="1" max="8" value="4"></div>
+<div class="control"><label for="rw">右のおもり：<output id="rwv">3</output></label><input id="rw" type="range" min="1" max="8" value="3"></div>
+</div>
+</section>
+</main>
+<script>
+const $=id=>document.getElementById(id);
+const val=id=>Number($(id).value);
+function svgEl(tag,attrs={},text=""){const e=document.createElementNS("http://www.w3.org/2000/svg",tag);for(const [k,v] of Object.entries(attrs))e.setAttribute(k,v);if(text)e.textContent=text;return e}
+function drawLever(ld,lw,rd,rw){
+ const s=$("lever");s.replaceChildren();
+ const cx=360,step=36,y=58;
+ s.append(svgEl("line",{x1:70,y1:y,x2:650,y2:y,stroke:"#65758b","stroke-width":7,"stroke-linecap":"round"}));
+ for(let i=1;i<=8;i++){
+   for(const sign of [-1,1]){
+     const x=cx+sign*i*step;
+     s.append(svgEl("line",{x1:x,y1:y-12,x2:x,y2:y+13,stroke:"#344256","stroke-width":2}));
+     s.append(svgEl("text",{x,y:y-17,"text-anchor":"middle","font-size":14,"font-weight":700,fill:"#344256"},String(i)));
+   }
+ }
+ s.append(svgEl("path",{d:`M ${cx-27} 62 L ${cx+27} 62 L ${cx} 112 Z`,fill:"#aab6c5",stroke:"#65758b","stroke-width":2}));
+ s.append(svgEl("line",{x1:cx,y1:112,x2:cx,y2:122,stroke:"#65758b","stroke-width":4}));
+ s.append(svgEl("line",{x1:cx-42,y1:123,x2:cx+42,y2:123,stroke:"#65758b","stroke-width":5,"stroke-linecap":"round"}));
+ function grid(x,y0,d,w,color,flip){
+   // 横方向の1マスの幅を、てこの目盛り間隔(step)と一致させる
+   const cellW=step,cellH=19,width=8*cellW;
+   for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+     const active=r<w&&c<d;
+     const xx=flip?x+width-(c+1)*cellW:x+c*cellW;
+     s.append(svgEl("rect",{x:xx,y:y0+r*cellH,width:cellW-2,height:cellH-2,rx:2,fill:active?color:"#ffffff",stroke:active?color:"#b8c6d6","stroke-width":1}));
+   }
+ }
+ // 面積図は中央の支点位置を基準に、横棒の下辺へ直接接するように配置
+ const gw=8*step,gy=y;
+ grid(cx-gw,gy,ld,lw,"#398dd0",true);
+ grid(cx,gy,rd,rw,"#d95750",false);
+}
+function update(){
+ const ld=val("ld"),lw=val("lw"),rd=val("rd"),rw=val("rw");
+ for(const [id,v] of [["ldv",ld],["rdv",rd]])$(id).textContent=v;
+  $("lwv").textContent=(lw*10)+"g";
+  $("rwv").textContent=(rw*10)+"g";
+ drawLever(ld,lw,rd,rw);
+
+}
+["ld","lw","rd","rw"].forEach(id=>$(id).addEventListener("input",update));
+update();
+</script></body></html>
